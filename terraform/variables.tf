@@ -9,7 +9,7 @@ variable "admin_ssh_cidr" {
   type        = string
 
   validation {
-    condition     = can(cidrhost(var.admin_ssh_cidr, 0)) && can(regex("/32$", var.admin_ssh_cidr))
+    condition     = can(regex("^([0-9]{1,3}\\.){3}[0-9]{1,3}/32$", var.admin_ssh_cidr)) && can(cidrhost(var.admin_ssh_cidr, 0))
     error_message = "admin_ssh_cidr must be a single IPv4 address with a /32 mask."
   }
 }
