@@ -1,9 +1,10 @@
 provider "aws" {
   region = "us-east-2"
 }
-module "aws_humangov_infrastructure" {
-  source     = "./modules/aws_humangov_infrastructure"
-  for_each   = toset(var.states)
-  state_name = each.value
 
+module "aws_humangov_infrastructure" {
+  source        = "./modules/aws_humangov_infrastructure"
+  for_each      = toset(var.states)
+  state_name    = each.value
+  admin_ssh_cidr = var.admin_ssh_cidr
 }
