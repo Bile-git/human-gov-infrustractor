@@ -16,7 +16,7 @@ The root Terraform configuration in `terraform/`:
 | Resource | Purpose |
 |---|---|
 | EC2 instance | Small `t3.micro` instance using the configured AMI and key pair |
-| Security group | Inbound SSH (22) and HTTP (80) rules |
+| Security group | SSH (22) restricted to one administrator IPv4 address; HTTP (80) remains public |
 | DynamoDB table | On-demand table with a string hash key named `id` |
 | S3 bucket | Bucket name includes a generated random suffix |
 
@@ -46,6 +46,7 @@ human-gov-infrustractor/
 - An AWS account and permissions for the resources in the module
 - AWS credentials configured through a supported provider method (for example, an IAM role or local AWS CLI profile)
 - An existing S3 bucket and DynamoDB lock table if you intend to use the configured remote backend
+- An administrator public IPv4 address for SSH access
 
 Do not put AWS access keys, secret keys, private keys, or passwords in Terraform files or commit them to this repository.
 
@@ -58,36 +59,45 @@ cd terraform
 terraform fmt -recursive
 terraform init
 terraform validate
-terraform plan
 ```
 
-Review the plan carefully before making any changes to an AWS account. Apply only when you understand the resources and costs:
+The configuration requires an administrator IPv4 address in single-host CIDR notation (`/32`). You can supply it at plan/apply time without saving it in a committed file:
 
 ```bash
-terraform apply
+ADMIN_IP=$(curl -4 -s https://checkip.amazonaws.com | tr -d '\n')
+terraform plan -var="admin_ssh_cidr=${ADMIN_IP}/32"
+```
+
+Review the plan carefully before making any changes to an AWS account. If the plan is correct, apply using the same variable:
+
+```bash
+terraform apply -var="admin_ssh_cidr=${ADMIN_IP}/32"
 ```
 
 To remove resources created by this configuration when they are no longer needed:
 
 ```bash
-terraform destroy
+terraform destroy -var="admin_ssh_cidr=${ADMIN_IP}/32"
 ```
 
 The configured S3 backend must already exist and be accessible before `terraform init` can complete. Backend configuration is in `backend.tf`; adapt it to an S3 bucket and locking approach that you own and have permission to use.
 
-## Important security review
+## Security considerations
 
-**Do not use the current security group unchanged for a production deployment.** The module currently allows inbound SSH (TCP 22) and HTTP (TCP 80) from `0.0.0.0/0`. Publicly exposing SSH is risky. Restrict SSH to a trusted administrator IP/CIDR or use a managed access method such as AWS Systems Manager Session Manager. Keep database and other administrative services private.
-
-Before deploying, also review the AMI ID, key pair name, region, backend bucket, lock configuration, and IAM permissions for your own environment.
+- SSH ingress is restricted to the administrator IPv4 address supplied through `admin_ssh_cidr`. Do not change this to `0.0.0.0/0`.
+- HTTP on port 80 is still public. Only keep it public if the application is intended to be reachable from the internet.
+- Review the AMI ID, key pair name, region, backend bucket, lock configuration, and IAM permissions for your own environment.
+- Prefer AWS Systems Manager Session Manager over public SSH where practical.
 
 ## State and secret hygiene
 
 Terraform state and backup files may contain infrastructure metadata and values that should not be public. This repository ignores local state, backup, plan, variable, and plugin-cache files. Keep state in a secured remote backend with encryption, access controls, and locking. Never commit `.tfstate`, `.tfstate.backup`, `.tfvars`, plan files, or credentials.
 
-## Current implementation notes
+A previously committed state backup has been removed from the current branch and is now covered by `.gitignore`. Removing a file in a new commit does not remove it from earlier Git history. If a state file ever contained real secrets, rotate those secrets and consider rewriting Git history before continuing to publish the repository.
 
-This README describes the resources and settings visible in the Terraform source. It does not claim that the configuration has been validated or successfully applied in every AWS account. Confirm the current plan and deployment results in your own environment before describing the infrastructure as deployed.
+## Validation status
+
+This README describes the resources and settings visible in the Terraform source. The repository changes have not been run through `terraform validate` or `terraform plan` in your AWS account. Confirm the current plan and deployment results in your own environment before describing the infrastructure as deployed.
 
 ---
 
