@@ -1,6 +1,24 @@
+# Terraform working directory and provider cache
 .terraform/
-* tfstate.backup
-*.tfvars
-*.tfplan
-*.tfstate   
+
+# Terraform state and backups
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
 *.tfstate.lock.info
+
+# Variable and plan files (may contain sensitive values)
+*.tfvars
+*.tfvars.json
+*.tfplan
+*.plan
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Local override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
